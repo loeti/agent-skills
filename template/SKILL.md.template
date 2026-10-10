@@ -1,26 +1,17 @@
 ---
 name: skill-name
-description: What this skill does and when to use it. Name concrete triggers (keywords, file types, tasks) so the agent knows when to load it. Third person, one paragraph.
+description: What it does and when to use it, with concrete triggers (keywords, tools, file types). Third person, one or two sentences.
 ---
 
 # Skill Name
 
-Short overview: what problem this skill solves and the expected outcome.
-
-## When to use
-
-- Situation / request that should trigger this skill
-- Situation where it should *not* be used
+One line: goal and expected outcome.
 
 ## Workflow
 
-1. First step
-2. Second step
-3. Verify the result
+1. Step, with the exact command
+2. Verify
 
-## References
+## Rules
 
-Load these only when needed:
-
-- `references/…` – detailed background material
-- `scripts/…` – helper scripts (run, don't read)
+- Only what the agent would otherwise get wrong
