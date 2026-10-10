@@ -16,6 +16,28 @@ fi
 - Use the name `ASYLUM_GH_TOKEN`, not `GH_TOKEN`/`GITHUB_TOKEN`. Those would override the host's own `gh` login in this directory.
 - PAT: fine-grained, only this project's repos, minimal permissions, with an expiry date.
 
+### One PAT for several repos
+
+direnv uses the nearest `.envrc` up the tree. Put it in the common parent directory:
+
+```
+customer/
+├── .envrc        ← ASYLUM_GH_TOKEN for all repos below
+├── repo-a/       ← inherits it (as long as it has no .envrc of its own)
+└── repo-b/
+```
+
+A repo that needs its own variables loads the parent's first:
+
+```sh
+# repo-a/.envrc
+source_up                  # or source_up_if_exists
+export FOO=bar
+```
+
+- Each `.envrc` needs `direnv allow` once.
+- Each repo directory gets its own container, but all of them get the same token. Repos that must not reach each other need separate PATs.
+
 ## Once: `~/.zshrc`
 
 The function also creates the project's Claude config dir up front. Otherwise Asylum seeds it by copying all of `~/.claude` (see below). The name formula comes from Asylum's `ContainerName`.
