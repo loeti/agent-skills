@@ -10,7 +10,7 @@ skills/<skill-name>/      one directory per skill
   references/             optional – docs loaded on demand
   scripts/                optional – helper scripts executed by the agent
   assets/                 optional – templates, files used in output
-template/                 starting point for new skills
+template/                 starting point for new skills (SKILL.md.template)
 scripts/
   new-skill.sh            create a skill from the template
   validate.sh             check frontmatter of all skills

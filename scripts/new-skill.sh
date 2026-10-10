@@ -17,5 +17,7 @@ if [[ -e "$target" ]]; then
 fi
 
 cp -R "$repo/template" "$target"
+# The template is not named SKILL.md, so skill scanners don't mistake it for a skill
+mv "$target/SKILL.md.template" "$target/SKILL.md"
 sed -i '' "s/^name: skill-name$/name: $name/" "$target/SKILL.md"
 echo "created $target"
