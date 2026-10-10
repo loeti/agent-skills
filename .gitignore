@@ -30,3 +30,4 @@ Temporary Items
 # Scratch output from skill evals / test runs
 *-workspace/
 .eval/
+.claude/
