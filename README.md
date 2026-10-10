@@ -30,6 +30,7 @@ Installing and grouping is done with [skiller](../skiller) (see `skills/skiller`
 | Skill | Purpose |
 |---|---|
 | [skiller](skills/skiller) | Find, install, group and apply agent skills with the `skiller` CLI |
+| [swiftui-to-compose-migration-planner](skills/swiftui-to-compose-migration-planner) | Plan the port of a SwiftUI feature to Android/Jetpack Compose, with a ticket-ready task breakdown |
 
 ## Conventions
 

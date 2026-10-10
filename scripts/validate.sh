@@ -18,6 +18,12 @@ for skill in "$repo"/skills/*/; do
   frontmatter="$(awk 'NR==1 {next} /^---$/ {exit} {print}' "$file")"
   name="$(printf '%s\n' "$frontmatter" | sed -n 's/^name:[[:space:]]*//p')"
   description="$(printf '%s\n' "$frontmatter" | sed -n 's/^description:[[:space:]]*//p')"
+  # Block scalars (description: >- / |) continue on the following indented lines
+  if [[ "$description" =~ ^[\>\|][-+]?$ ]]; then
+    description="$(printf '%s\n' "$frontmatter" \
+      | awk '/^description:/ {on=1; next} on && /^[[:space:]]/ {sub(/^[[:space:]]+/, ""); printf "%s ", $0; next} on {exit}')"
+    description="${description% }"
+  fi
 
   [[ "$name" == "$dir" ]] || fail "$dir" "frontmatter name '$name' does not match directory"
   [[ "$name" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || fail "$dir" "name must be lowercase-hyphenated"
