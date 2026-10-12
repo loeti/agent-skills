@@ -13,9 +13,10 @@ The container gets exactly one GitHub token: `GH_TOKEN`, a fine-grained PAT scop
 [ -n "$GH_TOKEN" ] || echo "GH_TOKEN missing"
 gh auth status                 # must show "(GH_TOKEN)"
 gh auth setup-git              # git uses gh as credential helper (writes no token)
+git config --global url."https://github.com/".insteadOf "git@github.com:"
 ```
 
-Use HTTPS remotes for GitHub. The container's SSH key is not registered there.
+The rewrite sends SSH remotes over HTTPS, because the container's SSH key is not registered on GitHub. Don't change the remotes themselves.
 
 ## If GH_TOKEN is missing or rejected
 
