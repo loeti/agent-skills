@@ -67,11 +67,12 @@ flowchart LR
     CLAUDEHOST -.-|nicht im Container| AGENT
 ```
 
-## Drei Stolpersteine
+## Vier Stolpersteine
 
 1. **Bequeme Defaults sind zu grosszügig.** Asylums Option `credentials: auto` für GitHub kopiert den vollen Token von `gh` auf dem Host in jeden Container. Die Claude-Einstellung `config: shared` bindet `~/.claude` ein, und damit die Verläufe aller Projekte. Beides habe ich abgeschaltet.
 2. **Der Name der Variable zählt.** Hiesse sie auf dem Host `GH_TOKEN`, würde sie meinen eigenen `gh`-Login im Projektverzeichnis überdecken. Darum heisst sie dort `ASYLUM_GH_TOKEN` und wird erst beim Start zu `GH_TOKEN`.
 3. **Ganz ohne Datei geht es mit Docker nicht.** Docker legt Umgebungsvariablen in den Metadaten des Containers ab, lesbar mit `docker inspect`. Asylum entfernt den Container nach der letzten Sitzung, damit verschwinden auch diese Daten. Für mich ist das ein akzeptabler Kompromiss.
+4. **direnv braucht seinen Hook.** Ohne `eval "$(direnv hook zsh)"` am Ende von `~/.zshrc` lädt direnv die `.envrc` beim `cd` nicht, und `asylum` startet ohne Token. `direnv allow` funktioniert trotzdem, deshalb fällt der fehlende Hook nicht auf. Prüfen lässt es sich im Projektverzeichnis mit `[ -n "$ASYLUM_GH_TOKEN" ] && echo gesetzt || echo LEER`.
 
 ## Mehrere Repos, ein Token
 
