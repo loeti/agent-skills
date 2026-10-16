@@ -72,6 +72,14 @@ asylum() {
 
 Don't put tokens in `env:` in `.asylum`/`.asylum.local` or in `.env`. All three are files, and `${VAR}` is not expanded.
 
+## Signing the agent's commits
+
+The agent commits unsigned. Sign them on the host before merging:
+
+```sh
+git rebase --exec 'git commit --amend --no-edit -n -S' origin/main
+```
+
 ## Limits
 
 - Docker keeps the container env in its metadata (`docker inspect`) until the container is removed. Asylum removes it after the last session.

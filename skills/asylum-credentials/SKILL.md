@@ -1,6 +1,6 @@
 ---
 name: asylum-credentials
-description: Git and GitHub access inside an Asylum container through a project-scoped PAT passed in as GH_TOKEN. Use when running in Asylum (ASYLUM_AGENT is set) and a task needs git push/pull, gh, or the GitHub API, when git or gh fails with an auth error there, or when setting up a project's .envrc for Asylum.
+description: Git and GitHub access inside an Asylum container through a project-scoped PAT passed in as GH_TOKEN. Use when running in Asylum (ASYLUM_AGENT is set) and a task needs git push/pull, gh, or the GitHub API, when git or gh fails with an auth or GPG signing error there, or when setting up a project's .envrc for Asylum.
 ---
 
 # Credentials in Asylum
@@ -14,9 +14,15 @@ The container gets exactly one GitHub token: `GH_TOKEN`, a fine-grained PAT scop
 gh auth status                 # must show "(GH_TOKEN)"
 gh auth setup-git              # git uses gh as credential helper (writes no token)
 git config --global url."https://github.com/".insteadOf "git@github.com:"
+git config --global commit.gpgsign false
+git config --global tag.gpgsign false
 ```
 
 The rewrite sends SSH remotes over HTTPS, because the container's SSH key is not registered on GitHub. Don't change the remotes themselves.
+
+## Commit signing
+
+The user's signing keys are deliberately not in the container. Commit unsigned; the user signs on the host before merging. Disable signing only with `--global` (container config): `.git/config` is shared with the host. Don't look for keys or ask for one. If a push is rejected for unsigned commits, push to a separate branch and tell the user.
 
 ## If GH_TOKEN is missing or rejected
 
