@@ -40,6 +40,14 @@ export FOO=bar
 
 ## Once: `~/.zshrc`
 
+The direnv hook must be present, otherwise `.envrc` never loads on `cd` and `asylum` starts without the token. Put it at the end:
+
+```sh
+eval "$(direnv hook zsh)"
+```
+
+Check with `[ -n "$ASYLUM_GH_TOKEN" ] && echo set || echo EMPTY` in the project directory. `direnv exec .` loads the file without the hook, so it doesn't prove the hook works.
+
 The function also creates the project's Claude config dir up front. Otherwise Asylum seeds it by copying all of `~/.claude` (see below). The name formula comes from Asylum's `ContainerName`.
 
 ```sh
