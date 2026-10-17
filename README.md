@@ -31,6 +31,7 @@ Installing and grouping is done with [skiller](../skiller) (see `skills/skiller`
 |---|---|
 | [skiller](skills/skiller) | Find, install, group and apply agent skills with the `skiller` CLI |
 | [asylum-credentials](skills/asylum-credentials) | GitHub access in Asylum containers via a project-scoped PAT in `GH_TOKEN` |
+| [asylum-xcode](skills/asylum-xcode) | Build and run iOS apps in the host Simulator from Asylum via XcodeBuildMCP |
 | [proton-pass-cli](skills/proton-pass-cli) | Use Proton Pass secrets as an agent via `pass-cli` without exposing them |
 | [swiftui-to-compose-migration-planner](skills/swiftui-to-compose-migration-planner) | Plan the port of a SwiftUI feature to Android/Jetpack Compose, with a ticket-ready task breakdown |
 
