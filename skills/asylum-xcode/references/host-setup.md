@@ -46,7 +46,7 @@ asylum run claude mcp add --transport http --scope local cupertino http://host.d
 asylum run claude mcp list   # expect "xcodebuild/cupertino … ✓ Connected"
 ```
 
-Use `--scope local`, not `.mcp.json`: it stays in the project's Claude config, out of the repo. Unverified whether it survives container removal; if `mcp list` no longer shows it after a restart, add it again.
+Use `--scope local`, not `.mcp.json`: it stays in the project's Claude config, out of the repo, and survives container restarts. That config belongs to the directory `asylum` was started in: starting from another directory (e.g. a parent) gives a separate container without the servers.
 
 ## Security
 
