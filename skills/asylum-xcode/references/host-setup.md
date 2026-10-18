@@ -38,8 +38,8 @@ Alternative where installed: `xcodebuildmcp-proxy [project-dir]` (`/Volumes/Tool
 
 This is a hole in the sandbox. The server runs with the user's full rights on the host.
 
-- The agent can edit `.xcodebuildmcp/config.yaml` (mounted read-write; it overrides env vars) and call `manage_workflows`, so the workflow list is not a boundary.
-- With `debugging` enabled, `debug_lldb_command` allows `platform shell`, i.e. arbitrary host commands.
+- `manage_workflows` and debugging tools are not exposed with the config above (checked with `tools/list`, 2.7.0). But the agent can edit `.xcodebuildmcp/config.yaml` (mounted read-write; it overrides env vars), so the workflow list is not a boundary.
+- If `debugging` gets enabled, `debug_lldb_command` allows `platform shell`, i.e. arbitrary host commands.
 - The port has no auth. Every container and local process can reach it.
 
 Run the proxy only for trusted projects and stop it afterwards. A real boundary would need an Asylum kit on the host broker with fixed actions.

@@ -23,7 +23,7 @@ If the proxy is not running, stop and tell the user:
 
 - Don't install Xcode, simctl, idb or XcodeBuildMCP in the container, and don't call `xcodebuild`/`xcrun` there.
 - Set session defaults (workspace, scheme, simulator) once, then reuse them. Prefer `build_run_sim` for "build and run".
-- Don't edit `.xcodebuildmcp/config.yaml`, call `manage_workflows`, or use debugging tools. If a needed tool is missing, ask the user to enable its workflow.
+- Don't edit `.xcodebuildmcp/config.yaml`. If a needed tool is missing, ask the user to enable its workflow.
 - Signing for devices is not available. Use the Simulator.
 
 Host setup (config, proxy, security): [references/host-setup.md](references/host-setup.md)
