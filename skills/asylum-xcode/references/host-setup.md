@@ -32,11 +32,25 @@ XCODEBUILDMCP_SENTRY_DISABLED=true \
   uvx mcp-proxy --host 127.0.0.1 --port 8765 --pass-environment -- xcodebuildmcp mcp
 ```
 
-Alternative where installed: `xcodebuildmcp-proxy [project-dir]` (`/Volumes/Tools/bin`) wraps the same command, checks that the port is free and warns if the config is missing. Other port: `PORT=8766 xcodebuildmcp-proxy`.
+Alternative where installed: `xcodebuildmcp-proxy [project-dir]` (`/Volumes/Tools/bin`) wraps the same command, checks that the port is free and warns if the config is missing. Other port: `PORT=8767 xcodebuildmcp-proxy`.
+
+Cupertino (Apple docs, read-only): `cupertino-proxy` (same script, port 8766, any directory). Low risk, so it can keep running.
+
+## Per project: register the MCP server
+
+With the proxy running, from the project directory on the host, before starting Claude (a server added during a session only loads in the next one):
+
+```sh
+asylum run claude mcp add --transport http --scope local xcodebuild http://host.docker.internal:8765/mcp
+asylum run claude mcp add --transport http --scope local cupertino http://host.docker.internal:8766/mcp
+asylum run claude mcp list   # expect "xcodebuild/cupertino … ✓ Connected"
+```
+
+Use `--scope local`, not `.mcp.json`: it stays in the project's Claude config, out of the repo. Unverified whether it survives container removal; if `mcp list` no longer shows it after a restart, add it again.
 
 ## Security
 
-This is a hole in the sandbox. The server runs with the user's full rights on the host.
+This is a hole in the sandbox (XcodeBuildMCP; Cupertino only reads its docs index). The server runs with the user's full rights on the host.
 
 - `manage_workflows` and debugging tools are not exposed with the config above (checked with `tools/list`, 2.7.0). But the agent can edit `.xcodebuildmcp/config.yaml` (mounted read-write; it overrides env vars), so the workflow list is not a boundary.
 - If `debugging` gets enabled, `debug_lldb_command` allows `platform shell`, i.e. arbitrary host commands.
