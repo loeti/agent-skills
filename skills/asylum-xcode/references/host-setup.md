@@ -32,6 +32,8 @@ XCODEBUILDMCP_SENTRY_DISABLED=true \
   uvx mcp-proxy --host 127.0.0.1 --port 8765 --pass-environment -- xcodebuildmcp mcp
 ```
 
+Alternative where installed: `xcodebuildmcp-proxy [project-dir]` (`/Volumes/Tools/bin`) wraps the same command, checks that the port is free and warns if the config is missing. Other port: `PORT=8766 xcodebuildmcp-proxy`.
+
 ## Security
 
 This is a hole in the sandbox. The server runs with the user's full rights on the host.

@@ -17,7 +17,7 @@ claude mcp list | grep xcodebuild || \
 
 If the proxy is not running, stop and tell the user:
 
-> Start the XcodeBuildMCP proxy on the host in the project directory (see the asylum-xcode host setup).
+> Start the XcodeBuildMCP proxy on the host in the project directory (`xcodebuildmcp-proxy`, see the asylum-xcode host setup).
 
 ## Rules
 
