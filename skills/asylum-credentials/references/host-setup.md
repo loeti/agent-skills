@@ -48,7 +48,7 @@ eval "$(direnv hook zsh)"
 
 Check with `[ -n "$ASYLUM_GH_TOKEN" ] && echo set || echo EMPTY` in the project directory. `direnv exec .` loads the file without the hook, so it doesn't prove the hook works.
 
-The function also creates the project's Claude config dir up front. Otherwise Asylum seeds it by copying all of `~/.claude` (see below). The name formula comes from Asylum's `ContainerName`.
+The function also creates the project's Claude config dir up front. Otherwise Asylum seeds it by copying all of `~/.claude` (see below). The name formula comes from Asylum's `ContainerName`. `ASYLUM_PASS_ENV` lists further direnv variables to pass through under the same name.
 
 ```sh
 asylum() {
@@ -57,13 +57,15 @@ asylum() {
   local cname="asylum-$(printf %s "$PWD" | shasum -a 256 | cut -c1-12)-${base:-project}"
   mkdir -p "$HOME/.asylum/projects/$cname/claude-config"
 
-  if [[ -n "$ASYLUM_GH_TOKEN" ]]; then
-    command asylum -e GH_TOKEN="$ASYLUM_GH_TOKEN" "$@"
-  else
-    command asylum "$@"
-  fi
+  local -a envargs
+  [[ -n "$ASYLUM_GH_TOKEN" ]] && envargs+=(-e GH_TOKEN="$ASYLUM_GH_TOKEN")
+  local v; for v in ${=ASYLUM_PASS_ENV}; do envargs+=(-e "$v=${(P)v}"); done
+  command ${ASYLUM_BIN:-asylum} "${envargs[@]}" "$@"
 }
+asylum-dev() { ASYLUM_BIN=/path/to/asylum/build/asylum-darwin-arm64 asylum "$@"; }
 ```
+
+Every other way to start Asylum (an alias to a dev build, an IDE terminal without direnv) skips the function: no token, and a missing config dir gets the full `~/.claude`. Shells opened before switching from an alias to a function still have the alias; `unalias` it or open a new shell.
 
 ## Once: `~/.asylum/config.yaml`
 
@@ -74,14 +76,45 @@ Don't put tokens in `env:` in `.asylum`/`.asylum.local` or in `.env`. All three 
 
 ## Signing the agent's commits
 
-The agent commits unsigned. Sign them on the host before merging:
+The copied `~/.gitconfig` signs with the host's GPG key, which isn't in the container (`No secret key`). Sign with the container's own SSH key (`~/.asylum/ssh/id_ed25519`, mounted at `~/.ssh/`) instead. `GIT_CONFIG_*` overrides every config file and only exists in the container:
 
-```sh
-git rebase --exec 'git commit --amend --no-edit -n -S' origin/main
+```yaml
+# ~/.asylum/config.yaml
+env:
+  GIT_CONFIG_COUNT: "2"
+  GIT_CONFIG_KEY_0: gpg.format
+  GIT_CONFIG_VALUE_0: ssh
+  GIT_CONFIG_KEY_1: user.signingkey
+  GIT_CONFIG_VALUE_1: /Users/<you>/.ssh/id_ed25519.pub   # container HOME = host HOME
 ```
+
+- Add `~/.asylum/ssh/id_ed25519.pub` on GitHub as a **Signing Key** (grants no repo access). Without it, commits are signed but not "Verified".
+- Not `kits.shell.entrypoint`: Asylum's generated config documents it, but it is silently ignored.
+- Forwarding the host's gpg-agent doesn't work: Docker Desktop on macOS can't mount host Unix sockets.
+- Applies to new containers only; end all sessions first.
+
+The key is shared by all projects (`isolation: isolated`), so it can't serve as a push deploy key: GitHub allows a deploy key in one repo only. Pushes go over HTTPS with the PAT (see SKILL.md).
 
 ## Limits
 
 - Docker keeps the container env in its metadata (`docker inspect`) until the container is removed. Asylum removes it after the last session.
 - The token is fixed at creation. After rotating it, end all sessions or use `asylum --rebuild`.
-- `asylum --debug` prints the run arguments, including the token.
+- In v0.8.1, `asylum --debug` and the process list (`ps`) show `-e` values, including the token, while a session runs.
+
+## After the merged PRs
+
+On Asylum `main`, not yet in a stable release (v0.8.1). Then the shell function goes away:
+
+```yaml
+# ~/.asylum/config.yaml
+agents:
+  claude:
+    config: project
+    seed: settings              # #44: settings, skills, login; no transcripts
+env-from-host:                  # #42: container name: host name; unset is skipped
+  GH_TOKEN: ASYLUM_GH_TOKEN
+```
+
+- Per-project secrets: `env-from-host` in `.asylum.local`. Both keys are ignored in `.asylum`.
+- #45: values go to `docker run` via an env file, so they leave `ps` and `--debug`. `docker inspect` still shows them.
+- `seed: settings` copies only `~/.claude`'s files: settings not in its `settings.json` (e.g. a statusline), user MCP servers (`~/.claude.json`) and plugins must be set up again per project.

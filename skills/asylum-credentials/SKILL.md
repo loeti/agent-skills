@@ -14,15 +14,13 @@ The container gets exactly one GitHub token: `GH_TOKEN`, a fine-grained PAT scop
 gh auth status                 # must show "(GH_TOKEN)"
 gh auth setup-git              # git uses gh as credential helper (writes no token)
 git config --global url."https://github.com/".insteadOf "git@github.com:"
-git config --global commit.gpgsign false
-git config --global tag.gpgsign false
 ```
 
-The rewrite sends SSH remotes over HTTPS, because the container's SSH key is not registered on GitHub. Don't change the remotes themselves.
+The rewrite sends SSH remotes over HTTPS, because the container's SSH key has no push access on GitHub (it's only a signing key). Don't change the remotes themselves.
 
 ## Commit signing
 
-The user's signing keys are deliberately not in the container. Commit unsigned; the user signs on the host before merging. Disable signing only with `--global` (container config): `.git/config` is shared with the host. Don't look for keys or ask for one. If a push is rejected for unsigned commits, push to a separate branch and tell the user.
+Commits are signed with the container's own SSH key, set via `GIT_CONFIG_*` in the environment (`git config --get gpg.format` → `ssh`). Don't disable signing or change signing config. If a commit fails with `No secret key` (GPG) or `gpg.format` is not `ssh`, the setup is missing: stop and tell the user (see host setup). Never touch `.git/config`, it is shared with the host.
 
 ## If GH_TOKEN is missing or rejected
 
