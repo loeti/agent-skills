@@ -10,13 +10,15 @@ Goal: use secrets without them entering the conversation. Docs: https://protonpa
 ## Session
 
 ```sh
-export PROTON_PASS_SESSION_DIR="/tmp/pass-agent-<project>"   # isolated from the user's session
+: "${PROTON_PASS_SESSION_DIR:=/tmp/pass-agent-<project>}"; export PROTON_PASS_SESSION_DIR
 pass-cli info || pass-cli login                               # PAT comes from the environment
 ```
 
+- Keep an existing `PROTON_PASS_SESSION_DIR`: direnv may set one per directory (e.g. per customer, each with its own PAT in a gitignored `.envrc.local`).
 - `login` reads `PROTON_PASS_PERSONAL_ACCESS_TOKEN` from the environment. If it is unset, ask the user to set it (e.g. via direnv). Never ask for the PAT in chat.
 - Never write the PAT into commands, files, commits or memory. Don't use `--pat`.
-- On auth errors: `pass-cli logout --force`, log in again, retry once. If that fails, report the error.
+- PAT sessions expire after 2 h. Run `info || login` again before each batch of calls.
+- On auth errors: `pass-cli logout --force`, log in again, retry once. If that still fails, the PAT itself may be expired: tell the user to run `pass-cli pat renew --pat-name <name> --expiration 1y` (needs their own account login). Renewing invalidates the old token, so the user then replaces it where direnv loads it and runs `login` again. Grants are kept. Don't run `renew` yourself.
 
 ## Using secrets (in this order)
 
