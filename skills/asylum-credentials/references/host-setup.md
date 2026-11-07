@@ -25,7 +25,7 @@ if has lw; then eval "$(lw env)"; else log_error "lw fehlt"; fi
 - `LW_ENV_<NAME>` per entry under `env:` in `.loeti-way.yaml`. On the Mac a variable never carries its real name (`GH_TOKEN` would override the host's own `gh` login).
 - Unreadable values are unset and reported on stderr; exit status is always 0. Check with `lw status`.
 - Tokens only for customers confirmed by `lw apply` in `~/.config/loeti-way/customers.yaml`. Any change to `.loeti-way.yaml` (agent, notes, vaults, env) blocks tokens until `lw apply` again, because the container can write that file.
-- PAT: fine-grained, only the needed repos, minimal permissions ("Contents" and "Pull requests": read and write), with an expiry date.
+- PAT: `lw init --project` opens GitHub at the PAT form, don't create it beforehand. Fine-grained, only the needed repos, minimal permissions ("Contents" and "Pull requests": read and write), with an expiry date.
 
 The direnv hook must be at the end of `~/.zshrc`, otherwise `.envrc` never loads on `cd`: `eval "$(direnv hook zsh)"`. Check with `[ -n "$ASYLUM_GH_TOKEN" ] && echo set || echo EMPTY`; `direnv exec .` doesn't prove the hook works.
 
