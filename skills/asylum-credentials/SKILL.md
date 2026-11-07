@@ -13,14 +13,14 @@ The container gets exactly one GitHub token: `GH_TOKEN`, a fine-grained PAT scop
 [ -n "$GH_TOKEN" ] || echo "GH_TOKEN missing"
 gh auth status                 # must show "(GH_TOKEN)"
 gh auth setup-git              # git uses gh as credential helper (writes no token)
-git config --global url."https://github.com/".insteadOf "git@github.com:"
+git remote -v                  # GitHub remotes must be https://github.com/…
 ```
 
-The rewrite sends SSH remotes over HTTPS, because the container's SSH key has no push access on GitHub (it's only a signing key). Don't change the remotes themselves.
+GitHub remotes use HTTPS: the container's SSH key has no push access on GitHub (it's only a signing key). Switch an SSH remote with `git remote set-url origin https://github.com/<owner>/<repo>.git` and tell the user, because it also applies on the Mac. Don't use a global `insteadOf` rewrite.
 
 ## Commit signing
 
-Commits are signed with the container's own SSH key, set via `GIT_CONFIG_*` in the environment (`git config --get gpg.format` → `ssh`). Don't disable signing or change signing config. If a commit fails with `No secret key` (GPG) or `gpg.format` is not `ssh`, the setup is missing: stop and tell the user (see host setup). Never touch `.git/config`, it is shared with the host.
+Commits are signed with the container's own SSH key, set via `GIT_CONFIG_*` in the environment (`git config --get gpg.format` → `ssh`). Don't disable signing or change signing config. If a commit fails with `No secret key` (GPG) or `gpg.format` is not `ssh`, the setup is missing: stop and tell the user (see host setup). Never touch signing or other settings in `.git/config`, it is shared with the host.
 
 ## If GH_TOKEN is missing or rejected
 

@@ -32,6 +32,8 @@ if has lw; then eval "$(lw env)"; else log_error "lw fehlt"; fi
 - Old config key `github:` is refused: move it under `tokens:`. Old PAT notes in `lw-tokens` are no longer read; store them again with `lw token github`.
 - PAT: let `lw token github` open the form, don't create it beforehand. Fine-grained, only the needed repos, minimal permissions ("Contents" and "Pull requests": read and write), with an expiry date.
 
+GitHub remotes are HTTPS (`https://github.com/<owner>/<repo>.git`), in the container and on the Mac, because `.git/config` is shared. On the Mac run `gh auth setup-git` once, so git uses the host's own `gh` login.
+
 The direnv hook must be at the end of `~/.zshrc`, otherwise `.envrc` never loads on `cd`: `eval "$(direnv hook zsh)"`. Check with `[ -n "$LW_ENV_GH_TOKEN" ] && echo set || echo EMPTY`; `direnv exec .` doesn't prove the hook works.
 
 ## After `lw renew` or `lw token`
@@ -78,7 +80,7 @@ env:
 - Forwarding the host's gpg-agent doesn't work: Docker Desktop on macOS can't mount host Unix sockets.
 - Applies to new containers only; end all sessions first.
 
-The key is shared by all projects (`isolation: isolated`), so it can't serve as a push deploy key: GitHub allows a deploy key in one repo only. Pushes go over HTTPS with the PAT (see SKILL.md).
+The key is shared by all projects (`isolation: isolated`), so it can't serve as a push deploy key: GitHub allows a deploy key in one repo only. Pushes go over HTTPS remotes with the PAT (see SKILL.md).
 
 ## Limits
 
