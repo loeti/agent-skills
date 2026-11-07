@@ -1,18 +1,22 @@
 # Host setup
 
-Flow: Proton Pass → `lw env` via direnv on the Mac (`ASYLUM_GH_TOKEN`, `LW_ENV_<NAME>`) → `env-from-host` → container env. Command reference: https://github.com/loeti/loeti-way#readme
+Flow: Proton Pass → `lw env` via direnv on the Mac (`LW_ENV_<NAME>`) → `env-from-host` → container env. Command reference: https://github.com/loeti/loeti-way#readme
 
-No pass-cli and no Proton token in the container. PATs are notes in vault `lw-tokens`, readable only by host agent `lw-host` (Viewer, token in `~/.config/loeti-way/host-token`). Each customer has an agent `asylum-<customer>` that reads the `env:` values from the customer's `agent-…` vaults, only on the Mac.
+No pass-cli and no Proton token in the container. Each customer has a Proton agent `agent-<customer>` that reads everything, only on the Mac: provider tokens as note `GitHub Token` in vault `agent-<customer>` (project with `vault: own`: `agent-<customer>-<folder>`) and the `env:` values. Vault `lw-tokens` holds only the Proton agents' own tokens; host agent `lw-host` (Viewer, token in `~/.config/loeti-way/host-token`) reads them so a customer agent can log in.
 
 ## Once per Mac / per customer
 
 ```sh
-lw host --setup        # create host agent, store its token, log in
-lw apply <customer>    # confirm customer, create agent and grants
-lw github <customer>   # store GitHub PAT (per project: lw init --project <path>)
+lw host --setup        # once: create host agent, store its token, log in
+pass-cli vault create --name agent-<customer>
+lw init --github-owner <org>   # in the customer directory: .loeti-way.yaml, .envrc
+lw apply <customer>    # confirm customer and projects, create agent and grants
+lw token github        # in the directory: open PAT form, check and store the token
 direnv allow           # in the customer or project directory
 lw status              # what's missing; --konto also checks grants
 ```
+
+Own PAT for a project: `lw init --project` in its directory, add `agent-<customer>-<folder>` to `proton.vaults` of the customer, `pass-cli vault create --name agent-<customer>-<folder>`, `lw apply`, `lw token github`, `direnv allow`.
 
 `.envrc` in customer and project directories, as written by `lw init`:
 
@@ -21,15 +25,16 @@ if has lw; then eval "$(lw env)"; else log_error "lw fehlt"; fi
 ```
 
 - Replace any old `.envrc` that calls pass-cli itself.
-- `ASYLUM_GH_TOKEN`: the project's PAT in a project directory, else the customer's. No fallback: a project without its own PAT gets none.
-- `LW_ENV_<NAME>` per entry under `env:` in `.loeti-way.yaml`. On the Mac a variable never carries its real name (`GH_TOKEN` would override the host's own `gh` login).
+- `LW_ENV_GH_TOKEN`: the project's PAT in a project directory with its own token, else the customer's. A broken or unregistered project gets nothing, no fallback to the customer.
+- `LW_ENV_<NAME>` per entry under `env:` of customer and project. On the Mac a variable never carries its real name (`GH_TOKEN` would override the host's own `gh` login).
 - Unreadable values are unset and reported on stderr; exit status is always 0. Check with `lw status`.
-- Tokens only for customers confirmed by `lw apply` in `~/.config/loeti-way/customers.yaml`. Any change to `.loeti-way.yaml` (agent, notes, vaults, env) blocks tokens until `lw apply` again, because the container can write that file.
-- PAT: `lw init --project` opens GitHub at the PAT form, don't create it beforehand. Fine-grained, only the needed repos, minimal permissions ("Contents" and "Pull requests": read and write), with an expiry date.
+- Tokens only for customers and projects confirmed by `lw apply` in `~/.config/loeti-way/customers.yaml`. Any change to `.loeti-way.yaml` or `.loeti-way-project.yaml` (agent, vaults, tokens, env) blocks them until `lw apply` again, because the container can write those files.
+- Old config key `github:` is refused: move it under `tokens:`. Old PAT notes in `lw-tokens` are no longer read; store them again with `lw token github`.
+- PAT: let `lw token github` open the form, don't create it beforehand. Fine-grained, only the needed repos, minimal permissions ("Contents" and "Pull requests": read and write), with an expiry date.
 
-The direnv hook must be at the end of `~/.zshrc`, otherwise `.envrc` never loads on `cd`: `eval "$(direnv hook zsh)"`. Check with `[ -n "$ASYLUM_GH_TOKEN" ] && echo set || echo EMPTY`; `direnv exec .` doesn't prove the hook works.
+The direnv hook must be at the end of `~/.zshrc`, otherwise `.envrc` never loads on `cd`: `eval "$(direnv hook zsh)"`. Check with `[ -n "$LW_ENV_GH_TOKEN" ] && echo set || echo EMPTY`; `direnv exec .` doesn't prove the hook works.
 
-## After `lw renew` or `lw github`
+## After `lw renew` or `lw token`
 
 `direnv reload` in open shells, then end all Asylum sessions of the customer and start again. The token is fixed when the container is created.
 
@@ -46,11 +51,11 @@ kits:
   github:
     credentials: false          # auto copies the host's full gh token into every project
 env-from-host:                  # container name: host name; unset is skipped
-  GH_TOKEN: ASYLUM_GH_TOKEN
+  GH_TOKEN: LW_ENV_GH_TOKEN
   MAVEN_PASSWORD: LW_ENV_MAVEN_PASSWORD   # one line per name under env:
 ```
 
-- Remove `PROTON_PASS_PERSONAL_ACCESS_TOKEN: ASYLUM_PROTON_PASS_PAT` or similar if present.
+- Remove `PROTON_PASS_PERSONAL_ACCESS_TOKEN: ASYLUM_PROTON_PASS_PAT` or similar if present. Change an old `GH_TOKEN: ASYLUM_GH_TOKEN` to `LW_ENV_GH_TOKEN`.
 - `env-from-host` and `seed` are ignored in `.asylum`. Don't put tokens in `env:` in `.asylum`/`.asylum.local` or in `.env`: they are files, and `${VAR}` is not expanded.
 - `seed: settings` copies only `~/.claude`'s files: settings not in its `settings.json` (e.g. a statusline), user MCP servers (`~/.claude.json`) and plugins must be set up again per project.
 

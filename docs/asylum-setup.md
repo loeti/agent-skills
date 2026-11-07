@@ -18,16 +18,16 @@ Coding-Agents wie Claude Code arbeiten am produktivsten, wenn man sie lässt: oh
 | Baustein | Aufgabe |
 |---|---|
 | **GitHub Fine-grained PAT** | Ein Token pro Kunde, bei Bedarf pro Projekt, nur für ausgewählte Repos, mit Ablaufdatum |
-| **Proton Pass** | Vault `lw-tokens` mit den PATs als Notizen; `agent-…`-Vaults des Kunden mit weiteren Secrets |
-| **`lw`** | Legt Agents, Freigaben und `.envrc` an; liest beim Betreten des Ordners die Tokens (`lw env`) |
-| **Host-Agent `lw-host`** | Bleibt auf dem Mac angemeldet, darf nur `lw-tokens` lesen (Viewer) |
-| **Kunden-Agent `asylum-<kunde>`** | Liest in `lw env` die `env:`-Werte aus den `agent-…`-Vaults des Kunden, nur auf dem Mac |
+| **Proton Pass** | `agent-…`-Vaults des Kunden mit dem PAT (Notiz `GitHub Token`) und weiteren Secrets; Vault `lw-tokens` nur mit den Tokens der Proton-Agents |
+| **`lw`** | Legt Agents, Freigaben und `.envrc` an, legt PATs ab; liest beim Betreten des Ordners die Tokens (`lw env`) |
+| **Host-Agent `lw-host`** | Bleibt auf dem Mac angemeldet, darf nur `lw-tokens` lesen (Viewer); damit meldet `lw` den Agent des Kunden an |
+| **Kunden-Agent `agent-<kunde>`** | Liest in `lw env` PAT und `env:`-Werte aus den `agent-…`-Vaults des Kunden, nur auf dem Mac |
 | **direnv + `.envrc`** | Ruft `lw env` auf, solange ich im Kunden- oder Projektordner bin |
-| **`env-from-host`** | Reicht `ASYLUM_GH_TOKEN` als `GH_TOKEN` und `LW_ENV_<NAME>` als `<NAME>` in den Container |
+| **`env-from-host`** | Reicht `LW_ENV_<NAME>` als `<NAME>` in den Container, z.B. `LW_ENV_GH_TOKEN` als `GH_TOKEN` |
 | **gh im Container** | Authentisiert `gh` und `git` über `GH_TOKEN` |
 | **SSH-Key des Containers** | Signiert Commits, auf GitHub als Signing Key hinterlegt |
 
-Mein eigenes Proton-Konto ist nur angemeldet, während ein `lw`-Befehl Agents verwaltet (`apply`, `renew`, `github`, `host --setup`, `status --konto`). Danach meldet `lw` es ab und löscht die Sitzung. Die normale Sitzung von `pass-cli` bleibt leer.
+Mein eigenes Proton-Konto ist nur angemeldet, während ein `lw`-Befehl Agents verwaltet (`apply`, `renew`, `token`, `host --setup`, `status --konto`). Danach meldet `lw` es ab und löscht die Sitzung. Die normale Sitzung von `pass-cli` bleibt leer.
 
 ## Ablauf
 
@@ -44,10 +44,10 @@ sequenceDiagram
     Ich->>Shell: cd ~/code/kunde/projekt
     Shell->>LW: eval "$(lw env)"
     LW->>LW: .loeti-way.yaml gegen customers.yaml prüfen
-    LW->>Pass: PAT aus lw-tokens (als lw-host)
-    LW->>Pass: env:-Werte aus agent-… (als asylum-<kunde>)
+    LW->>Pass: Token von agent-<kunde> aus lw-tokens (als lw-host, nur zum Anmelden)
+    LW->>Pass: PAT und env:-Werte aus agent-… (als agent-<kunde>)
     Pass-->>LW: Werte (nur im Speicher)
-    LW-->>Shell: export ASYLUM_GH_TOKEN, LW_ENV_*
+    LW-->>Shell: export LW_ENV_*
     Ich->>Asylum: asylum
     Asylum->>C: docker run (env-File: GH_TOKEN, <NAME>)
     C->>C: gh auth setup-git
@@ -60,12 +60,12 @@ sequenceDiagram
 ```mermaid
 flowchart LR
     subgraph Host
-        PP[("Proton Pass<br/>lw-tokens, agent-…")]
+        PP[("Proton Pass<br/>agent-… (PAT, env), lw-tokens")]
         HT["~/.config/loeti-way/host-token<br/>Token von lw-host (0600)"]
         CUST["~/.config/loeti-way/customers.yaml<br/>bestätigte Kunden"]
-        LWY[".loeti-way.yaml<br/>Agent, Notizen, Vaults, env"]
+        LWY[".loeti-way.yaml<br/>Agent, Vaults, tokens, env"]
         ENVRC[".envrc<br/>nur eval lw env"]
-        ENV["ASYLUM_GH_TOKEN, LW_ENV_*<br/>(Umgebung der Shell)"]
+        ENV["LW_ENV_*<br/>(Umgebung der Shell)"]
         GHHOST["gh auf dem Host<br/>eigener Login, alle Repos"]
         CLAUDEHOST["~/.claude<br/>Verläufe aller Projekte"]
         GPG["GPG-Key<br/>signiert Commits auf dem Host"]
@@ -94,11 +94,13 @@ flowchart LR
 Einmalig bzw. einmal pro Kunde. Optionen und Details stehen im [README von loeti-way](https://github.com/loeti/loeti-way#readme).
 
 ```sh
-lw host --setup        # Host-Agent anlegen, Token speichern, anmelden
-lw apply <kunde>       # Kunde bestätigen, Agent und Freigaben anlegen
-lw github <kunde>      # GitHub-PAT ablegen (pro Projekt: lw init --project <pfad>)
-direnv allow           # im Kunden- bzw. Projektordner
-lw status              # zeigt, was noch fehlt; lw status --konto prüft auch die Rechte
+lw host --setup                          # einmalig: Host-Agent anlegen, Token speichern, anmelden
+pass-cli vault create --name agent-<kunde>
+lw init --github-owner <org>             # im Kundenordner: .loeti-way.yaml und .envrc
+lw apply <kunde>                         # Kunde und Projekte bestätigen, Agent und Freigaben anlegen
+lw token github                          # im Ordner: PAT-Formular öffnen, Token prüfen und ablegen
+direnv allow                             # im Kunden- bzw. Projektordner
+lw status                                # zeigt, was noch fehlt; lw status --konto prüft auch die Rechte
 ```
 
 Die `.envrc` im Kunden- und im Projektordner enthält nur noch eine Zeile. `lw init` legt sie so an:
@@ -109,14 +111,16 @@ if has lw; then eval "$(lw env)"; else log_error "lw fehlt"; fi
 
 `lw env` exportiert:
 
-- `ASYLUM_GH_TOKEN`: im Projektordner den PAT des Projekts, sonst den des Kunden.
-- `LW_ENV_<NAME>` für jeden Eintrag unter `env:` in `.loeti-way.yaml`.
+- `LW_ENV_GH_TOKEN`: im Projektordner mit eigenem Token den PAT des Projekts, sonst den des Kunden.
+- `LW_ENV_<NAME>` für jeden Eintrag unter `env:` von Kunde und Projekt.
 
 Beim Umstieg vom alten Setup:
 
 - Eine alte `.envrc`, die `pass-cli` selbst aufruft, durch die Zeile oben ersetzen und `direnv allow` ausführen.
 - Einen Eintrag wie `PROTON_PASS_PERSONAL_ACCESS_TOKEN: ASYLUM_PROTON_PASS_PAT` aus `~/.asylum/config.yaml` entfernen. Der Container braucht keinen Proton-Token mehr.
 - Die zsh-Funktion `asylum` und `env-from-host`-Einträge in `.asylum.local` entfallen.
+- `GH_TOKEN: ASYLUM_GH_TOKEN` in `~/.asylum/config.yaml` wird zu `GH_TOKEN: LW_ENV_GH_TOKEN`.
+- In `.loeti-way.yaml` gehört `github:` jetzt unter `tokens:`, `lw` lehnt den alten Schlüssel ab. PATs aus `lw-tokens` liest `lw` nicht mehr: mit `lw token github` neu ablegen.
 
 ## Konfiguration von Asylum
 
@@ -141,7 +145,7 @@ env:
   GIT_CONFIG_VALUE_1: /Users/<ich>/.ssh/id_ed25519.pub
 
 env-from-host:               # Container-Name: Host-Name, nicht gesetzt = übersprungen
-  GH_TOKEN: ASYLUM_GH_TOKEN
+  GH_TOKEN: LW_ENV_GH_TOKEN
   MAVEN_PASSWORD: LW_ENV_MAVEN_PASSWORD   # eine Zeile je Name aus env:
 ```
 
@@ -152,7 +156,7 @@ Zu beachten:
 - `seed: settings` kopiert nur, was in `~/.claude` liegt. Eine Statusline, die nicht in der dortigen `settings.json` steht, muss im Projekt nachgetragen werden. User-MCP-Server aus `~/.claude.json` und Plugins müssen im Container neu eingerichtet werden.
 - Der direnv-Hook muss am Ende von `~/.zshrc` stehen: `eval "$(direnv hook zsh)"` (siehe Stolperstein 4).
 
-## Nach `lw renew` oder `lw github`
+## Nach `lw renew` oder `lw token`
 
 1. In offenen Shells `direnv reload` ausführen.
 2. Alle Asylum-Sitzungen des Kunden beenden und neu starten.
@@ -185,27 +189,37 @@ Noch offen: [#50](https://github.com/inventage-ai/asylum/pull/50) (`host-mcp`-Ki
 ## Stolpersteine
 
 1. **Bequeme Defaults sind zu grosszügig.** Asylums Option `credentials: auto` für GitHub kopiert den vollen Token von `gh` auf dem Host in jeden Container. Die Claude-Einstellung `config: shared` bindet `~/.claude` ein, und damit die Verläufe aller Projekte. Beides habe ich abgeschaltet.
-2. **Der Name der Variable zählt.** Auf dem Mac trägt eine Variable nie ihren echten Namen. Hiesse der PAT dort `GH_TOKEN`, würde er meinen eigenen `gh`-Login im Projektordner überdecken, und ein `MAVEN_PASSWORD` würde in jedem Build auf dem Host wirken. Darum heissen sie `ASYLUM_GH_TOKEN` und `LW_ENV_<NAME>`, und erst `env-from-host` gibt ihnen im Container den echten Namen.
+2. **Der Name der Variable zählt.** Auf dem Mac trägt eine Variable nie ihren echten Namen. Hiesse der PAT dort `GH_TOKEN`, würde er meinen eigenen `gh`-Login im Projektordner überdecken, und ein `MAVEN_PASSWORD` würde in jedem Build auf dem Host wirken. Darum heissen sie `LW_ENV_<NAME>`, und erst `env-from-host` gibt ihnen im Container den echten Namen.
 3. **Ganz ohne Datei geht es mit Docker nicht.** Docker legt Umgebungsvariablen in den Metadaten des Containers ab, lesbar mit `docker inspect`. Asylum entfernt den Container nach der letzten Sitzung, damit verschwinden auch diese Daten.
-4. **direnv braucht seinen Hook.** Ohne `eval "$(direnv hook zsh)"` am Ende von `~/.zshrc` lädt direnv die `.envrc` beim `cd` nicht, und `asylum` startet ohne Token. `direnv allow` funktioniert trotzdem, deshalb fällt der fehlende Hook nicht auf. Prüfen lässt es sich im Projektordner mit `[ -n "$ASYLUM_GH_TOKEN" ] && echo gesetzt || echo LEER`.
+4. **direnv braucht seinen Hook.** Ohne `eval "$(direnv hook zsh)"` am Ende von `~/.zshrc` lädt direnv die `.envrc` beim `cd` nicht, und `asylum` startet ohne Token. `direnv allow` funktioniert trotzdem, deshalb fällt der fehlende Hook nicht auf. Prüfen lässt es sich im Projektordner mit `[ -n "$LW_ENV_GH_TOKEN" ] && echo gesetzt || echo LEER`.
 5. **`lw env` scheitert leise.** Was es nicht lesen kann, entfernt es aus der Umgebung und meldet es nur auf stderr. Der Exit-Status ist immer 0, direnv lädt also weiter. Bei einem leeren Token zuerst die Meldungen beim `cd` und `lw status` anschauen.
-6. **Kein Rückfall auf den Kunden-PAT.** Im Projektordner gilt nur der PAT des Projekts. Fehlt er, bleibt `ASYLUM_GH_TOKEN` leer.
-7. **Eine Änderung an `.loeti-way.yaml` sperrt die Tokens.** Ein Kunde bekommt erst Tokens, wenn `lw apply <kunde>` ihn in `~/.config/loeti-way/customers.yaml` bestätigt hat. Ändert sich danach Agent, Notizen, Vaults oder `env:`, verweigert `lw env` die Tokens, bis `lw apply` die Änderung erneut bestätigt. Grund: Ein Agent im Container kann diese Datei schreiben.
-8. **Der Token gilt ab Erstellung des Containers.** Nach einer Korrektur oder einem neuen Token alle Sitzungen beenden, damit der Container neu entsteht (siehe [Nach `lw renew` oder `lw github`](#nach-lw-renew-oder-lw-github)).
+6. **Kein Rückfall bei einem kaputten Projekt.** Hat ein Projekt eine `.loeti-way-project.yaml`, die kaputt oder nicht mit `lw apply` registriert ist, setzt `lw env` dort gar nichts, auch nicht die Werte des Kunden.
+7. **Eine Änderung an `.loeti-way.yaml` sperrt die Tokens.** Ein Kunde bekommt erst Tokens, wenn `lw apply <kunde>` ihn und seine Projekte in `~/.config/loeti-way/customers.yaml` bestätigt hat. Ändert sich danach Agent, Vaults, `tokens:` oder `env:` (auch in einer `.loeti-way-project.yaml`), verweigert `lw env` die Tokens, bis `lw apply` die Änderung erneut bestätigt. Grund: Ein Agent im Container kann diese Dateien schreiben.
+8. **Der Token gilt ab Erstellung des Containers.** Nach einer Korrektur oder einem neuen Token alle Sitzungen beenden, damit der Container neu entsteht (siehe [Nach `lw renew` oder `lw token`](#nach-lw-renew-oder-lw-token)).
 9. **Pushen über SSH scheitert.** Der SSH-Key des Containers ist für alle Projekte derselbe (`isolation: isolated`) und hat bei GitHub keinen Push-Zugriff. Als Deploy-Key taugt er nicht, weil GitHub einen Deploy-Key nur in einem einzigen Repo zulässt. Der Agent pusht deshalb über HTTPS mit dem PAT: `gh auth setup-git` plus `url."https://github.com/".insteadOf "git@github.com:"`, so bleiben die SSH-Remotes unverändert. Der PAT braucht dafür "Contents: Read and write" und für PRs "Pull requests: Read and write".
 10. **`kits.shell.entrypoint` wird ignoriert.** Die Kommentare in der generierten `config.yaml` beschreiben die Option, Asylum liest sie aber nicht (nur `shell.build`). Einstellungen nur für den Container, wie das Signieren, laufen deshalb über `env:`.
 
 ## Kunde und Projekt
 
-Kunden- und Projektordner haben dieselbe einzeilige `.envrc`. `lw env` entscheidet selbst, welcher PAT gilt: im Projektordner der des Projekts, sonst der des Kunden. Alle Repos, die den Kunden-PAT nutzen, bekommen in ihrem Container denselben Token. Ein Projekt, das andere Repos nicht erreichen darf, bekommt mit `lw init --project <pfad>` einen eigenen PAT.
+Kunden- und Projektordner haben dieselbe einzeilige `.envrc`. `lw env` entscheidet selbst, welcher PAT gilt: im Projektordner mit eigenem Token der des Projekts, sonst der des Kunden. Alle Repos, die den Kunden-PAT nutzen, bekommen in ihrem Container denselben Token. Ein Projekt, das andere Repos nicht erreichen darf, bekommt einen eigenen PAT in einem eigenen Vault:
+
+```sh
+cd <projektordner>
+lw init --project                        # .loeti-way-project.yaml mit vault: own, .envrc
+pass-cli vault create --name agent-<kunde>-<projektordner>
+$EDITOR ../.loeti-way.yaml               # den Vault unter proton.vaults eintragen
+lw apply <kunde>
+lw token github
+direnv allow
+```
 
 ## Grenzen
 
 - Asylum ist Schadensbegrenzung, keine Sicherheits-Sandbox. Netzwerkzugriff ist offen.
 - Der Agent kann `.asylum` und `.asylum.local` im Projekt schreiben und damit beim nächsten Start Volumes, Kits oder Umgebungsvariablen erweitern ([#47](https://github.com/inventage-ai/asylum/issues/47), offen). Ein `:ro`-Mount in diesen Dateien ist deshalb keine Grenze. Für `.loeti-way.yaml` fängt `lw` das ab (Stolperstein 7).
 - Das `docker`-Kit startet den Container privilegiert, was einen Ausbruch in die VM und das Dateisystem des Hosts erlaubt ([#48](https://github.com/inventage-ai/asylum/issues/48), offen).
-- Der Token von `lw-host` liegt als Datei auf dem Mac (`~/.config/loeti-way/host-token`, Modus 0600). Wer ihn hat, kann alle PATs in `lw-tokens` lesen.
-- Fine-grained PATs laufen ab und müssen von Hand erneuert werden ("Regenerate" in GitHub, danach `lw github`).
+- Der Token von `lw-host` liegt als Datei auf dem Mac (`~/.config/loeti-way/host-token`, Modus 0600). Wer ihn hat, kann die Tokens aller Kunden-Agents in `lw-tokens` lesen und damit die Vaults aller Kunden, aber nicht mein Konto.
+- Fine-grained PATs laufen ab und müssen von Hand erneuert werden (`lw token github` öffnet "Regenerate" in GitHub und legt den neuen Token ab).
 - Ein Token, der mehrere Repos abdeckt, gilt in jedem dieser Container.
 
 Die Anleitung für Agents und die Einrichtung auf dem Host liegen als Skill in [loeti/agent-skills](https://github.com/loeti/agent-skills/tree/main/skills/asylum-credentials).

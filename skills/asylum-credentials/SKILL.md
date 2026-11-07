@@ -5,7 +5,7 @@ description: Git and GitHub access inside an Asylum container through a customer
 
 # Credentials in Asylum
 
-The container gets exactly one GitHub token: `GH_TOKEN`, a fine-grained PAT scoped to this customer's or project's repos. Other secrets arrive under their real names from `env:` in `.loeti-way.yaml`. All are set when the container is created and never stored in a file. There is no pass-cli and no Proton token here, by design.
+The container gets exactly one GitHub token: `GH_TOKEN`, a fine-grained PAT scoped to this customer's or project's repos. Other secrets arrive under their real names from `env:` in `.loeti-way.yaml` or `.loeti-way-project.yaml`. All are set when the container is created and never stored in a file. There is no pass-cli and no Proton token here, by design.
 
 ## Setup (once per container)
 
@@ -26,9 +26,9 @@ Commits are signed with the container's own SSH key, set via `GIT_CONFIG_*` in t
 
 Don't work around it. Tell the user:
 
-> Run `lw status` in the project directory on the Mac and fix what it reports (`lw apply <customer>` after a `.loeti-way.yaml` change, `lw github <customer>` or `lw init --project <path>` for a missing PAT). Then `direnv reload`, end all Asylum sessions of the customer and start again: the token is fixed when the container is created.
+> Run `lw status` in the project directory on the Mac and fix what it reports (`lw apply <customer>` after a change to `.loeti-way.yaml` or `.loeti-way-project.yaml`, `lw token github` in the directory for a missing or expired PAT). Then `direnv reload`, end all Asylum sessions of the customer and start again: the token is fixed when the container is created.
 
-A project directory never falls back to the customer PAT. A missing `env:` value has the same causes.
+A broken or unregistered project directory gets nothing, never the customer's values. A missing `env:` value has the same causes.
 
 A 403/404 on another repo means the PAT doesn't cover it. That is intended, so report it and don't look for other credentials.
 
@@ -37,7 +37,7 @@ A 403/404 on another repo means the PAT doesn't cover it. That is intended, so r
 - Never print, echo, log or write `GH_TOKEN` to a file. Don't use `gh auth login`, `gh auth token`, or tokens in remote URLs.
 - Don't search the container for other credentials (`~/.config/gh`, `~/.ssh`, env dumps).
 - Don't install or look for pass-cli or a Proton token in the container.
-- Don't edit `.loeti-way.yaml`: any change blocks all tokens until the user runs `lw apply` again.
+- Don't edit `.loeti-way.yaml` or `.loeti-way-project.yaml`: any change blocks the tokens until the user runs `lw apply` again.
 - Bitbucket: not configured yet. Report that instead of improvising.
 
 Host setup (`lw`, `.envrc`, Asylum config): [references/host-setup.md](references/host-setup.md)
